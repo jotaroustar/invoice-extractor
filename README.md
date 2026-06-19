@@ -10,10 +10,10 @@
 
 ### 方式一：直接下载使用
 
-下载以下三个文件放在**同一目录**，用浏览器打开 `invoice-extractor.html` 即可（缺任意一个PDF解析会报错）：
+下载以下三个文件放在**同一目录**，用浏览器打开 `index.html` 即可（缺任意一个PDF解析会报错）：
 
 ```
-invoice-extractor.html
+index.html
 pdf.min.js
 pdf.worker.min.js
 ```
@@ -145,7 +145,7 @@ AI识别有误或发票本身字迹模糊时，结果字段是可编辑输入框
 ## 📂 文件结构
 
 ```
-invoice-extractor.html   # 主程序（HTML+CSS+JS，约40KB）
+index.html                # 主程序（HTML+CSS+JS，约40KB）
 pdf.min.js                # pdf.js核心库（约370KB）
 pdf.worker.min.js         # pdf.js解析worker（约1.1MB）
 ```
@@ -173,7 +173,7 @@ pdf.worker.min.js         # pdf.js解析worker（约1.1MB）
 | 会议纪要整理器 | 6种会议类型，AI流式整理待办与纪要 |
 | Excel公式生成器 | 描述需求直接生成可复制公式 |
 | 工作总结生成器 | 输入工作内容，一键生成专业总结 |
-| jotarou.com API | AI API中转服务，支持Claude / GPT / DeepSeek / Gemini |
+| jotarou.com API | AI API中转服务，支持Claude / GPT / DeepSeek |
 
 ---
 
