@@ -1,0 +1,837 @@
+<!-- Copyright © 2026 jotarou.com. All rights reserved. Unauthorized copying or commercial use is prohibited. -->
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>报销单/发票提取器 | jotarou.com</title>
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f0e8;--bg-card:#ede7dc;--bg-in:#faf7f3;
+  --tx:#2c1f0e;--tx-m:#7a6a54;--tx-l:#b8a89a;
+  --ac:#d4622a;--ac-h:#b8511f;--ac-bg:rgba(212,98,42,.12);
+  --bd:#d4c5ae;--bd-l:#e8dece;
+  --ok:#4a7c59;--ok-bg:rgba(74,124,89,.1);
+  --warn:#d97706;--warn-bg:rgba(217,119,6,.1);
+  --err:#c0392b;--err-bg:rgba(192,57,43,.1);
+  --r:10px;--rs:6px;
+}
+[data-theme=dark]{
+  --bg:#1a1209;--bg-card:#241a0d;--bg-in:#201508;
+  --tx:#e8dece;--tx-m:#a89070;--tx-l:#786050;
+  --ac:#e07040;--ac-h:#c85e30;--ac-bg:rgba(224,112,64,.15);
+  --bd:#3d2e18;--bd-l:#2e2010;
+  --ok:#5a9c70;--ok-bg:rgba(90,156,112,.15);
+  --warn:#f59e0b;--warn-bg:rgba(245,158,11,.12);
+  --err:#e05040;--err-bg:rgba(224,80,64,.12);
+}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;line-height:1.65;min-height:100vh}
+a{color:var(--ac);text-decoration:none}
+
+/* Header */
+.hdr{background:var(--bg-card);border-bottom:1px solid var(--bd);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.h-back{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--rs);background:var(--bg);color:var(--tx-m);border:1px solid var(--bd);font-size:17px;transition:.15s}
+.h-back:hover{background:var(--ac-bg);color:var(--ac);border-color:var(--ac)}
+.hdr-title{font-size:15px;font-weight:700}
+.hdr-sub{font-size:11px;color:var(--tx-m);margin-top:1px}
+.hdr-r{display:flex;gap:8px}
+.icon-btn{width:32px;height:32px;border-radius:var(--rs);background:var(--bg);border:1px solid var(--bd);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;color:var(--tx-m)}
+.icon-btn:hover{background:var(--ac-bg);border-color:var(--ac)}
+
+/* Layout */
+.main{max-width:1200px;margin:0 auto;padding:22px 18px 80px}
+
+/* Card */
+.card{background:var(--bg-card);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+/* Form */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.fg:last-child{margin-bottom:0}
+label{font-size:12px;color:var(--tx-m);font-weight:600}
+label .opt{font-weight:400;font-size:11px;color:var(--tx-l)}
+input[type=text],input[type=password],textarea{background:var(--bg-in);border:1px solid var(--bd);border-radius:var(--rs);padding:8px 11px;color:var(--tx);font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
+input:focus,textarea:focus{border-color:var(--ac)}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+
+/* Key input */
+.key-wrap{position:relative}
+.key-wrap input{padding-right:38px}
+.key-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--tx-l);font-size:16px}
+.key-link{font-size:12px;color:var(--ac);margin-top:5px;display:block}
+
+/* Dropzone */
+.dropzone{border:2px dashed var(--bd);border-radius:var(--r);background:var(--bg-card);padding:26px 20px;text-align:center;margin-bottom:14px;transition:.15s;cursor:pointer}
+.dropzone.drag-over{border-color:var(--ac);background:var(--ac-bg)}
+.dz-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.dz-sub{font-size:12.5px;color:var(--tx-m)}
+.dropzone input[type=file]{display:none}
+
+/* Workspace */
+.workspace{display:grid;grid-template-columns:340px 1fr;gap:14px;align-items:start}
+@media(max-width:860px){.workspace{grid-template-columns:1fr}}
+.panel{background:var(--bg-card);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.panel-head{padding:12px 14px;border-bottom:1px solid var(--bd);font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.panel-head .count{color:var(--tx-m);font-weight:400;font-size:12px}
+
+/* 列表 */
+.item-list{max-height:560px;overflow-y:auto}
+.item-row{padding:10px 14px;border-bottom:1px solid var(--bd-l);cursor:pointer;display:flex;align-items:center;gap:10px;transition:.15s}
+.item-row:hover{background:var(--ac-bg)}
+.item-row.active{background:var(--ac-bg);border-left:3px solid var(--ac)}
+.flag-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.flag-dot.red{background:var(--err)}
+.flag-dot.yellow{background:var(--warn)}
+.flag-dot.green{background:var(--ok)}
+.flag-dot.gray{background:var(--tx-l)}
+.item-info{flex:1;min-width:0}
+.item-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-status{font-size:11.5px;color:var(--tx-m)}
+.item-status.err{color:var(--err)}
+.item-del{border:none;background:none;color:var(--tx-l);font-size:15px;cursor:pointer;padding:2px 6px;border-radius:4px}
+.item-del:hover{background:var(--err-bg);color:var(--err)}
+.empty-hint{padding:30px 16px;text-align:center;color:var(--tx-m);font-size:13px}
+
+/* 结果面板 */
+.result-body{padding:16px}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+@media(max-width:520px){.field-grid{grid-template-columns:1fr}}
+.f-item{display:flex;flex-direction:column;gap:4px}
+.f-item.full{grid-column:1/-1}
+.f-item label{font-size:11.5px;color:var(--tx-m)}
+.f-item input{font-size:13.5px;padding:7px 9px;border:1px solid var(--bd);border-radius:var(--rs);background:var(--bg-in);color:var(--tx)}
+.f-item input.num{font-family:Consolas,Menlo,monospace}
+.f-item input.invalid{border-color:var(--err);background:var(--err-bg)}
+.f-item .hint{font-size:11px;color:var(--err);display:none}
+.f-item .hint.show{display:block}
+
+.flag-banner{margin:0 16px 14px;padding:9px 12px;border-radius:var(--rs);font-size:12.5px;border:1px solid}
+.flag-banner.red{border-color:rgba(192,57,43,.3);background:var(--err-bg);color:var(--err)}
+.flag-banner.yellow{border-color:rgba(217,119,6,.3);background:var(--warn-bg);color:var(--warn)}
+.flag-banner.green{border-color:rgba(74,124,89,.25);background:var(--ok-bg);color:var(--ok)}
+.flag-banner ul{margin:4px 0 0;padding-left:18px}
+
+/* 流式预览区（复用合同提取器的视觉语言） */
+.stream-preview{display:none;background:var(--bg-in);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin:0 16px 14px}
+.stream-preview.show{display:block}
+.stream-status{font-size:12px;color:var(--tx-m);margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.s-dot{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:sdot .9s ease-in-out infinite;flex-shrink:0}
+@keyframes sdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.stream-text{font-size:12px;color:var(--tx-m);white-space:pre-wrap;max-height:160px;overflow-y:auto;font-family:monospace;line-height:1.55;word-break:break-all}
+.stream-text.cur::after{content:'▋';color:var(--ac);animation:scur .8s step-end infinite}
+@keyframes scur{50%{opacity:0}}
+.stream-prog{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.s-tag{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bd-l);color:var(--tx-l);transition:.3s}
+.s-tag.done{background:var(--ok-bg);color:var(--ok);font-weight:600}
+
+.model-label{padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;background:var(--ac-bg);color:var(--ac)}
+
+/* 脱敏扫描动画（复用合同提取器） */
+.raw-wrap{position:relative;margin:0 16px 14px}
+.scan-overlay{position:absolute;inset:0;border-radius:var(--rs);pointer-events:none;overflow:hidden;opacity:0;transition:opacity .15s}
+.scan-overlay.active{opacity:1}
+.scan-line{position:absolute;width:100%;height:4px;background:linear-gradient(90deg,transparent,var(--ac),transparent);animation:scanAnim .9s ease-in-out forwards;top:0}
+@keyframes scanAnim{0%{top:0;opacity:1}100%{top:100%;opacity:.2}}
+.raw-text{padding:10px;background:var(--bg-in);border:1px solid var(--bd);border-radius:var(--rs);font-size:12px;white-space:pre-wrap;max-height:220px;overflow-y:auto;font-family:Consolas,Menlo,monospace}
+.desens-row{display:flex;gap:8px;margin-top:8px;align-items:center}
+.btn-desens{padding:7px 14px;background:var(--bg-card);border:1px solid var(--bd);border-radius:var(--rs);font-size:13px;color:var(--tx-m);cursor:pointer;transition:.15s;white-space:nowrap}
+.btn-desens:hover{border-color:var(--ac);color:var(--ac)}
+.btn-desens.done{border-color:var(--ok);color:var(--ok);cursor:default}
+
+/* 按钮 */
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 16px}
+.btn-copy{display:flex;align-items:center;gap:5px;padding:7px 13px;background:var(--bg-card);border:1px solid var(--bd);border-radius:var(--rs);color:var(--tx-m);font-size:13px;cursor:pointer;transition:.15s}
+.btn-copy:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-bg)}
+.btn-pri{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;background:var(--ac);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:700;cursor:pointer;transition:.15s}
+.btn-pri:hover{background:var(--ac-h)}
+.btn-pri:disabled{opacity:.5;cursor:not-allowed}
+
+/* 错误 */
+.err-box{display:none;margin:0 16px 14px;padding:10px 14px;background:var(--err-bg);border:1px solid rgba(192,57,43,.3);border-radius:var(--rs);color:var(--err);font-size:13px}
+.err-box.show{display:block}
+
+/* 自查清单 */
+.checklist-box{display:flex;flex-direction:column;gap:8px}
+.cl-item{background:var(--bg-in);border:1px solid var(--bd-l);border-radius:var(--rs);padding:10px 14px;font-size:13px;color:var(--tx-m)}
+
+/* 吸底汇总栏 */
+.summary-bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg-card);border-top:1px solid var(--bd);box-shadow:0 -4px 16px rgba(0,0,0,.08);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;z-index:150}
+.summary-stats{font-size:13px;display:flex;gap:18px;flex-wrap:wrap;color:var(--tx)}
+.summary-stats b{font-family:Consolas,Menlo,monospace;color:var(--ac)}
+.summary-actions{display:flex;gap:8px}
+
+/* Toast */
+.toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--tx);color:var(--bg);padding:9px 20px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:9999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Footer */
+footer{background:var(--bg-card);border-top:1px solid var(--bd);padding:20px;text-align:center;font-size:12px;color:var(--tx-m);line-height:2;margin-bottom:60px}
+footer a{color:var(--ac)}
+
+@media(max-width:600px){
+  .main{padding:14px 12px 80px}
+  .hdr-sub{display:none}
+}
+
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l">
+    <a href="/tools/" class="h-back" title="工具列表">&#x229E;</a>
+    <div>
+      <div class="hdr-title">🧾 报销单/发票提取器</div>
+      <div class="hdr-sub">批量提取 · 本地校验 · 一键导出</div>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题">🌙</button>
+  </div>
+</header>
+
+<main class="main">
+
+  <div class="card">
+    <div class="card-title">报销设置 <span class="opt" style="font-weight:400">用于本地校验，不上传AI</span></div>
+    <div class="settings-grid">
+      <div class="fg">
+        <label>报销主体名称</label>
+        <input type="text" id="entityName" placeholder="如：上海某某科技有限公司">
+      </div>
+      <div class="fg">
+        <label>报销时效（天）</label>
+        <input type="text" id="validDays" value="90">
+      </div>
+      <div class="fg">
+        <label>不可报销品类关键词</label>
+        <input type="text" id="blacklist" value="烟,酒,KTV,棋牌室,按摩">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔑 API Key</div>
+    <div class="fg">
+      <label>在 jotarou.com 注册获取</label>
+      <div class="key-wrap">
+        <input type="password" id="apiKey" placeholder="sk-xxxx...">
+        <button class="key-eye" onclick="toggleKeyVis()">👁</button>
+      </div>
+      <a class="key-link" href="https://jotarou.com" target="_blank">→ 前往 jotarou.com 获取 Key</a>
+    </div>
+  </div>
+
+  <div class="dropzone" id="dropzone">
+    <div class="dz-title">拖拽PDF发票到这里，或点击选择文件</div>
+    <div class="dz-sub">也可以直接 Ctrl+V 粘贴发票文字内容（自动识别为文本条目）</div>
+    <input type="file" id="fileInput" accept=".pdf" multiple>
+  </div>
+
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-head"><span>批次列表</span><span class="count" id="listCount">0 项</span></div>
+      <div class="item-list" id="itemList">
+        <div class="empty-hint">还没有添加发票，拖文件或粘贴文本试试</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-pri" id="processAllBtn">提取全部</button>
+        <button class="btn-copy" id="clearAllBtn">清空列表</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>提取结果</span><span class="count" id="resultLabel">未选中任何条目</span></div>
+      <div id="resultArea"><div class="empty-hint">从左侧列表选中一条，查看/编辑提取结果</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 报销防坑自查清单</div>
+    <div class="checklist-box">
+      <div class="cl-item">发票抬头是否与上方"报销主体名称"一致（系统自动比对，不一致标黄）</div>
+      <div class="cl-item">是否在报销时效内（默认90天，超期自动标黄提醒）</div>
+      <div class="cl-item">是否存在不可报销品类，如烟酒、娱乐类（按关键词自动检测）</div>
+      <div class="cl-item">增值税专用发票是否核对过开票方一般纳税人资质（需人工确认，系统无法自动核实）</div>
+      <div class="cl-item">同一张发票是否被重复上传（系统按发票号自动查重，标红提醒）</div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<div class="summary-bar">
+  <div class="summary-stats">
+    <span>已提取 <b id="sumCount">0</b> / <span id="sumTotal">0</span> 张</span>
+    <span>不含税 <b id="sumExcl">¥0.00</b></span>
+    <span>税额 <b id="sumTax">¥0.00</b></span>
+    <span>价税合计 <b id="sumIncl">¥0.00</b></span>
+  </div>
+  <div class="summary-actions">
+    <button class="btn-copy" id="exportTxtBtn">复制纯文本</button>
+    <button class="btn-copy" id="exportMdBtn">复制Markdown</button>
+    <button class="btn-pri" id="exportCsvBtn">下载CSV</button>
+  </div>
+</div>
+
+<footer>
+  <div>输入内容经 jotarou.com API 网关转发至大模型服务商，网关不持久化对话内容</div>
+  <div><a href="/tools/">工具列表</a> · <a href="https://jotarou.com" target="_blank">jotarou.com</a> · © 2026 jotarou.com</div>
+  <div style="margin-top:4px;font-size:11px">本工具仅供参考，提取结果请自行核对，重要报销请以单位财务规定为准</div>
+</footer>
+
+<!-- pdf.js 本地化引用，不走任何外部CDN -->
+<script src="./pdf.min.js"></script>
+<script>
+
+// ======= Escape =======
+function esc(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+
+// ======= Theme =======
+function initTheme(){
+  const t = localStorage.getItem('inv-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t==='dark' ? '☀️' : '🌙';
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const nxt = cur==='dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', nxt);
+  localStorage.setItem('inv-theme', nxt);
+  document.getElementById('themeBtn').textContent = nxt==='dark' ? '☀️' : '🌙';
+}
+
+// ======= Toast =======
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ======= Key =======
+function toggleKeyVis(){
+  const inp = document.getElementById('apiKey');
+  inp.type = inp.type==='password' ? 'text' : 'password';
+}
+
+// ======= 状态 =======
+const DRAFT_KEY = 'inv-extract-draft-v1';
+let items = loadDraft();
+let activeId = items.length ? items[0].id : null;
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
+
+const FIELD_DEFS = [
+  {key:'invoice_code', label:'发票代码'},
+  {key:'invoice_number', label:'发票号码', mono:true},
+  {key:'issue_date', label:'开票日期', mono:true},
+  {key:'seller_name', label:'销售方名称'},
+  {key:'seller_tax_id', label:'销售方税号', mono:true},
+  {key:'buyer_name', label:'购买方名称'},
+  {key:'buyer_tax_id', label:'购买方税号', mono:true},
+  {key:'item_name', label:'商品/服务名称', full:true},
+  {key:'amount_excl_tax', label:'不含税金额', mono:true},
+  {key:'tax_amount', label:'税额', mono:true},
+  {key:'amount_incl_tax', label:'价税合计', mono:true},
+  {key:'tax_rate', label:'税率', mono:true},
+  {key:'invoice_type', label:'发票类型'},
+  {key:'notes', label:'备注/异常', full:true}
+];
+
+const STREAM_TAGS = [
+  {key:'invoice_number', label:'发票号码'},
+  {key:'seller_name', label:'销售方'},
+  {key:'amount_incl_tax', label:'金额'},
+  {key:'invoice_type', label:'发票类型'}
+];
+
+const SYSTEM_PROMPT = '你是专业的发票/报销单据信息提取助手。请从用户提供的发票文本内容中提取字段，仅以JSON格式返回，不要包含任何其他说明文字、不要使用markdown代码块包裹。\n\n' +
+'返回格式：\n' +
+'{"invoice_code":"发票代码，无则空字符串","invoice_number":"发票号码","issue_date":"开票日期，格式YYYY-MM-DD",' +
+'"seller_name":"销售方名称","seller_tax_id":"销售方纳税人识别号","buyer_name":"购买方名称","buyer_tax_id":"购买方纳税人识别号",' +
+'"item_name":"商品或服务名称","amount_excl_tax":数字或null,"tax_amount":数字或null,"amount_incl_tax":数字或null,' +
+'"tax_rate":"税率，如13%/免税/简易计税","invoice_type":"增值税专用发票/增值税电子普通发票/全电发票/手写小票/其他",' +
+'"notes":"备注，如有字段模糊不清或缺失在此简要说明"}\n\n' +
+'金额字段必须是纯数字，不要带¥和逗号。某字段找不到时文本字段返回空字符串，金额字段返回null。严格只返回一个JSON对象。';
+
+function uid(){return 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function saveDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(items)); }catch(e){} }
+function loadDraft(){
+  try{ const raw = localStorage.getItem(DRAFT_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  return [];
+}
+function loadSettings(){
+  ['entityName','validDays','blacklist'].forEach(k=>{
+    const v = localStorage.getItem('inv-set-'+k);
+    if(v!==null) document.getElementById(k).value = v;
+  });
+}
+function bindSettingsSave(){
+  ['entityName','validDays','blacklist'].forEach(k=>{
+    document.getElementById(k).addEventListener('input', e=>{
+      localStorage.setItem('inv-set-'+k, e.target.value);
+      items.forEach(it=>{ if(it.status==='success') runValidation(it); });
+      renderList(); renderResult();
+    });
+  });
+}
+
+function desensitizeText(text){
+  if(!text) return text;
+  let t = text;
+  t = t.replace(/1[3-9]\d{9}/g, '***-****-****');
+  t = t.replace(/\d{17}[\dXx]/g, '[身份证已脱敏]');
+  t = t.replace(/\d{16,19}/g, '[卡号已脱敏]');
+  return t;
+}
+
+// ======= PDF提取 =======
+async function extractPdfText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let full = '';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    full += content.items.map(it=>it.str).join(' ') + '\n';
+  }
+  return full.trim();
+}
+
+// ======= AI 提取（流式） =======
+function parseJsonWithFallback(content){
+  const clean = (content||'').replace(/```json|```/g,'').trim();
+  try{ return JSON.parse(clean); }catch(e){}
+  const m = clean.match(/\{[\s\S]*\}/);
+  if(m){ try{ return JSON.parse(m[0]); }catch(e2){} }
+  return null;
+}
+
+async function processItem(item){
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if(!apiKey){ showToast('请先填写 API Key'); return; }
+  if(!item.rawText){
+    item.status = 'error';
+    item.errorMsg = item.errorMsg || '没有可提取的文本内容';
+    saveDraft(); renderList(); renderResult();
+    return;
+  }
+
+  item.status = 'processing';
+  item.streamRaw = '';
+  const chars = item.rawText.length;
+  item.model = chars <= 8000 ? 'gpt-4o-mini' : 'deepseek-chat';
+  item.modelLabel = chars <= 8000 ? '⚡ 极速模式' : '🎯 精准模式';
+  saveDraft(); renderList(); renderResult();
+
+  try{
+    const res = await fetch('https://jotarou.com/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body: JSON.stringify({
+        model: item.model,
+        max_tokens: 1000,
+        stream: true,
+        messages:[
+          {role:'system', content: SYSTEM_PROMPT},
+          {role:'user', content: item.rawText}
+        ]
+      })
+    });
+    if(!res.ok){
+      let msg = '请求失败 ('+res.status+')';
+      try{ const d = await res.json(); msg = (d.error && d.error.message) || msg; }catch(e){}
+      throw new Error(msg);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buf += decoder.decode(value, {stream:true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for(const line of lines){
+        const t = line.trim();
+        if(!t || t === 'data: [DONE]') continue;
+        if(t.startsWith('data: ')){
+          try{
+            const j = JSON.parse(t.slice(6));
+            const delta = (j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content) || '';
+            if(delta){
+              item.streamRaw += delta;
+              if(item.id === activeId) updateStreamPreview(item);
+            }
+          }catch(e){}
+        }
+      }
+    }
+
+    const parsed = parseJsonWithFallback(item.streamRaw);
+    if(parsed){
+      item.fields = parsed;
+      item.status = 'success';
+      runValidation(item);
+    } else {
+      item.status = 'error';
+      item.errorMsg = '模型返回内容无法解析为JSON，可在下方查看原始输出';
+      item.rawModelOutput = item.streamRaw;
+    }
+  }catch(e){
+    item.status = 'error';
+    item.errorMsg = e.message;
+  }
+  saveDraft(); renderList(); renderResult(); renderSummary();
+}
+
+async function processAll(){
+  const pending = items.filter(i=>i.status==='pending' || i.status==='error');
+  const concurrency = 2;
+  let idx = 0;
+  async function worker(){
+    while(idx < pending.length){
+      const item = pending[idx++];
+      if(item.rawText) await processItem(item);
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(concurrency, pending.length)}, worker));
+}
+
+// ======= 本地校验 =======
+function runValidation(item){
+  const f = item.fields || {};
+  const issues = {red:[], yellow:[]};
+
+  if(f.amount_excl_tax!=null && f.tax_amount!=null && f.amount_incl_tax!=null){
+    const calc = Math.round((Number(f.amount_excl_tax)+Number(f.tax_amount))*100)/100;
+    item.amountValid = Math.abs(calc - Number(f.amount_incl_tax)) <= 0.05;
+    if(!item.amountValid) issues.red.push('金额校验不通过：不含税('+f.amount_excl_tax+')+税额('+f.tax_amount+')≠价税合计('+f.amount_incl_tax+')');
+  } else { item.amountValid = null; }
+
+  [['seller_tax_id','销售方'],['buyer_tax_id','购买方']].forEach(([key,label])=>{
+    const v = (f[key]||'').trim();
+    if(v && ![15,17,18,20].includes(v.length)) issues.red.push(label+'税号位数异常（'+v.length+'位，常见为15/17/18/20位）');
+  });
+
+  const entityName = document.getElementById('entityName').value.trim();
+  if(entityName && f.buyer_name){
+    const match = f.buyer_name.includes(entityName) || entityName.includes(f.buyer_name);
+    if(!match) issues.yellow.push('购买方"'+f.buyer_name+'"与报销主体"'+entityName+'"不一致');
+  }
+
+  const validDays = parseInt(document.getElementById('validDays').value, 10) || 90;
+  if(f.issue_date){
+    const d = new Date(f.issue_date);
+    if(!isNaN(d.getTime())){
+      const diffDays = Math.floor((new Date() - d) / 86400000);
+      if(diffDays > validDays) issues.yellow.push('开票日期距今'+diffDays+'天，超出报销时效'+validDays+'天');
+      if(diffDays < 0) issues.yellow.push('开票日期晚于今天，请确认日期是否识别正确');
+    }
+  }
+
+  const blacklist = document.getElementById('blacklist').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean);
+  if(f.item_name && blacklist.some(k=>f.item_name.includes(k))) issues.yellow.push('商品/服务名称"'+f.item_name+'"命中不可报销关键词');
+
+  if(f.invoice_number){
+    const dup = items.filter(it=>it.status==='success' && it.fields && it.fields.invoice_number===f.invoice_number);
+    if(dup.length > 1) issues.red.push('发票号"'+f.invoice_number+'"在本批次中重复出现（'+dup.length+'次）');
+  }
+
+  item.issues = issues;
+  item.flag = issues.red.length ? 'red' : (issues.yellow.length ? 'yellow' : 'green');
+}
+
+// ======= 添加条目 =======
+function addTextItem(text){
+  const label = '纯文本输入-'+(items.filter(i=>i.type==='text').length+1);
+  const item = {id:uid(), type:'text', label, rawText:text, status:'pending', fields:null, flag:'gray', desensitized:false};
+  items.push(item); activeId = item.id;
+  saveDraft(); renderList(); renderResult(); renderSummary();
+}
+async function addPdfFile(file){
+  const item = {id:uid(), type:'pdf', label:file.name, rawText:'', status:'pending', fields:null, flag:'gray', desensitized:false};
+  items.push(item); activeId = item.id;
+  saveDraft(); renderList(); renderResult();
+  try{
+    const text = await extractPdfText(file);
+    if(text.length < 10){
+      item.status = 'error';
+      item.errorMsg = '该PDF为扫描件，未检测到可提取的文本层，暂不支持自动识别，请改用文本粘贴，或等待后续版本支持图片识别';
+    } else { item.rawText = text; }
+  }catch(e){
+    item.status = 'error';
+    item.errorMsg = 'PDF解析失败：'+e.message;
+  }
+  saveDraft(); renderList(); renderResult();
+}
+
+// ======= 列表渲染 =======
+function renderList(){
+  const list = document.getElementById('itemList');
+  document.getElementById('listCount').textContent = items.length+' 项';
+  if(!items.length){ list.innerHTML = '<div class="empty-hint">还没有添加发票，拖文件或粘贴文本试试</div>'; return; }
+  list.innerHTML = items.map(it=>{
+    const dotClass = it.status==='success' ? it.flag : (it.status==='error' ? 'red' : 'gray');
+    const statusText = {pending:'待处理', processing:'提取中…', success:'已完成', error: it.errorMsg || '失败'}[it.status] || it.status;
+    return '<div class="item-row '+(it.id===activeId?'active':'')+'" data-id="'+it.id+'">'+
+      '<span class="flag-dot '+dotClass+'"></span>'+
+      '<div class="item-info"><div class="item-name">'+esc(it.label)+'</div>'+
+      '<div class="item-status '+(it.status==='error'?'err':'')+'">'+esc(statusText)+'</div></div>'+
+      '<button class="item-del" data-del="'+it.id+'" title="删除">✕</button></div>';
+  }).join('');
+  list.querySelectorAll('.item-row').forEach(row=>{
+    row.addEventListener('click', e=>{
+      if(e.target.closest('[data-del]')) return;
+      activeId = row.dataset.id;
+      renderList(); renderResult();
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const id = btn.dataset.del;
+      items = items.filter(it=>it.id!==id);
+      if(activeId===id) activeId = items.length ? items[0].id : null;
+      saveDraft(); renderList(); renderResult(); renderSummary();
+    });
+  });
+}
+
+// ======= 流式预览（处理中实时更新） =======
+function updateStreamPreview(item){
+  const box = document.getElementById('streamBox');
+  if(!box) return;
+  const textEl = document.getElementById('streamText');
+  textEl.textContent = item.streamRaw;
+  textEl.scrollTop = textEl.scrollHeight;
+  STREAM_TAGS.forEach(tag=>{
+    if(item.streamRaw.includes('"'+tag.key+'"')){
+      const el = document.getElementById('stag-'+tag.key);
+      if(el) el.className = 's-tag done';
+    }
+  });
+}
+
+// ======= 结果面板渲染 =======
+function renderResult(){
+  const area = document.getElementById('resultArea');
+  const label = document.getElementById('resultLabel');
+  const item = items.find(i=>i.id===activeId);
+  if(!item){ label.textContent = '未选中任何条目'; area.innerHTML = '<div class="empty-hint">从左侧列表选中一条，查看/编辑提取结果</div>'; return; }
+  label.textContent = item.label;
+
+  if(item.status==='pending'){
+    area.innerHTML = '<div class="empty-hint">尚未提取，点击"提取全部"或下方按钮开始</div><div class="btn-row"><button class="btn-pri" id="processOneBtn">提取这一条</button></div>';
+    document.getElementById('processOneBtn').addEventListener('click', ()=>processItem(item));
+    return;
+  }
+  if(item.status==='processing'){
+    area.innerHTML =
+      '<div class="stream-preview show" id="streamBox">'+
+        '<div class="stream-status"><span class="s-dot"></span><span>正在提取，'+(item.modelLabel||'')+'…</span></div>'+
+        '<div class="stream-text cur" id="streamText"></div>'+
+        '<div class="stream-prog">'+STREAM_TAGS.map(t=>'<span class="s-tag" id="stag-'+t.key+'">'+t.label+'</span>').join('')+'</div>'+
+      '</div>';
+    updateStreamPreview(item);
+    return;
+  }
+  if(item.status==='error'){
+    let extra = '';
+    if(item.rawModelOutput) extra = '<div class="raw-wrap"><div class="raw-text">'+esc(item.rawModelOutput)+'</div></div>';
+    area.innerHTML = '<div class="flag-banner red"><b>提取失败</b><div>'+esc(item.errorMsg||'未知错误')+'</div></div>'+extra+
+      '<div class="btn-row"><button class="btn-pri" id="retryBtn">重试</button></div>';
+    document.getElementById('retryBtn').addEventListener('click', ()=>processItem(item));
+    return;
+  }
+
+  const f = item.fields || {};
+  const issues = item.issues || {red:[],yellow:[]};
+  let bannerHtml;
+  if(item.flag==='red'){
+    bannerHtml = '<div class="flag-banner red"><b>⚠ 需人工核实</b><ul>'+issues.red.concat(issues.yellow).map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul></div>';
+  } else if(item.flag==='yellow'){
+    bannerHtml = '<div class="flag-banner yellow"><b>⚠ 请注意</b><ul>'+issues.yellow.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul></div>';
+  } else {
+    bannerHtml = '<div class="flag-banner green">✓ 字段完整，本地校验通过 <span class="model-label">'+esc(item.modelLabel||'')+'</span></div>';
+  }
+
+  const fieldsHtml = FIELD_DEFS.map(def=>{
+    const val = f[def.key];
+    const isAmount = ['amount_excl_tax','tax_amount','amount_incl_tax'].includes(def.key);
+    const showVal = (val===null||val===undefined) ? '' : val;
+    const invalidClass = (isAmount && item.amountValid===false) ? 'invalid' : '';
+    const hintHtml = (isAmount && item.amountValid===false) ? '<div class="hint show">金额校验未通过</div>' : '';
+    return '<div class="f-item '+(def.full?'full':'')+'"><label>'+def.label+'</label>'+
+      '<input type="text" class="'+(def.mono?'num':'')+' '+invalidClass+'" data-field="'+def.key+'" value="'+esc(showVal)+'">'+hintHtml+'</div>';
+  }).join('');
+
+  const rawDisplay = item.desensitized ? desensitizeText(item.rawText) : item.rawText;
+
+  area.innerHTML = bannerHtml +
+    '<div class="result-body"><div class="field-grid">'+fieldsHtml+'</div></div>'+
+    '<div class="btn-row"><button class="btn-copy" id="reprocessBtn">重新提取</button></div>'+
+    '<div class="raw-wrap">'+
+      '<div class="desens-row">'+
+        '<button class="btn-desens '+(item.desensitized?'done':'')+'" id="desensBtn">'+(item.desensitized?'✅ 已脱敏':'🛡️ 一键脱敏原文（本地处理）')+'</button>'+
+      '</div>'+
+      '<div class="scan-overlay" id="scanOverlay"><div class="scan-line" id="scanLine" style="display:none"></div></div>'+
+      '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12.5px;color:var(--ac)">查看原文</summary>'+
+      '<div class="raw-text" style="margin-top:8px">'+esc(rawDisplay)+'</div></details>'+
+    '</div>';
+
+  area.querySelectorAll('input[data-field]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const key = inp.dataset.field;
+      const isAmount = ['amount_excl_tax','tax_amount','amount_incl_tax'].includes(key);
+      let v = inp.value;
+      if(isAmount){ v = v.trim()==='' ? null : Number(v); if(Number.isNaN(v)) v = null; }
+      item.fields[key] = v;
+      runValidation(item);
+      saveDraft(); renderList(); renderResult(); renderSummary();
+    });
+  });
+  document.getElementById('reprocessBtn').addEventListener('click', ()=>processItem(item));
+  document.getElementById('desensBtn').addEventListener('click', ()=>{
+    if(item.desensitized) return;
+    const overlay = document.getElementById('scanOverlay');
+    const line = document.getElementById('scanLine');
+    overlay.classList.add('active');
+    line.style.display = 'block';
+    line.style.animation = 'none'; line.offsetHeight; line.style.animation = '';
+    setTimeout(()=>{
+      item.desensitized = true;
+      overlay.classList.remove('active');
+      line.style.display = 'none';
+      saveDraft(); renderResult();
+      showToast('脱敏完成，手机号/身份证/银行卡已隐藏');
+    }, 900);
+  });
+}
+
+// ======= 汇总栏 =======
+function renderSummary(){
+  const successItems = items.filter(i=>i.status==='success');
+  document.getElementById('sumCount').textContent = successItems.length;
+  document.getElementById('sumTotal').textContent = items.length;
+  const sum = (key)=> successItems.reduce((acc,it)=> acc + (Number(it.fields[key])||0), 0);
+  document.getElementById('sumExcl').textContent = '¥'+sum('amount_excl_tax').toFixed(2);
+  document.getElementById('sumTax').textContent = '¥'+sum('tax_amount').toFixed(2);
+  document.getElementById('sumIncl').textContent = '¥'+sum('amount_incl_tax').toFixed(2);
+}
+
+// ======= 导出 =======
+function escapeCsvField(val){
+  if(val===null||val===undefined) return '';
+  const s = String(val);
+  return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function exportCSV(){
+  const headers = ['文件名','发票代码','发票号码','开票日期','销售方','销售方税号','购买方','购买方税号','项目名称','不含税金额','税额','价税合计','税率','发票类型','校验状态','备注'];
+  const rows = items.filter(i=>i.status==='success').map(it=>{
+    const f = it.fields;
+    return [it.label, f.invoice_code, f.invoice_number, f.issue_date, f.seller_name, f.seller_tax_id, f.buyer_name, f.buyer_tax_id, f.item_name, f.amount_excl_tax, f.tax_amount, f.amount_incl_tax, f.tax_rate, f.invoice_type, it.flag, f.notes];
+  });
+  if(!rows.length){ showToast('还没有已完成提取的条目可导出'); return; }
+  const csv = [headers, ...rows].map(r=>r.map(escapeCsvField).join(',')).join('\r\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '报销清单_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('CSV已下载');
+}
+function buildPlainText(){
+  const successItems = items.filter(i=>i.status==='success');
+  if(!successItems.length) return '';
+  let out = '报销清单（共'+successItems.length+'张）\n\n';
+  successItems.forEach((it,idx)=>{
+    const f = it.fields;
+    out += (idx+1)+'. '+it.label+'\n';
+    out += '   发票号：'+(f.invoice_number||'-')+'  开票日期：'+(f.issue_date||'-')+'\n';
+    out += '   销售方：'+(f.seller_name||'-')+'\n';
+    out += '   项目：'+(f.item_name||'-')+'\n';
+    out += '   不含税：¥'+(f.amount_excl_tax??'-')+'  税额：¥'+(f.tax_amount??'-')+'  价税合计：¥'+(f.amount_incl_tax??'-')+'\n';
+    if(it.flag!=='green') out += '   提示：'+(it.issues.red.concat(it.issues.yellow)).join('；')+'\n';
+    out += '\n';
+  });
+  const sum = (key)=> successItems.reduce((acc,it)=> acc + (Number(it.fields[key])||0), 0);
+  out += '合计：不含税¥'+sum('amount_excl_tax').toFixed(2)+'  税额¥'+sum('tax_amount').toFixed(2)+'  价税合计¥'+sum('amount_incl_tax').toFixed(2)+'\n';
+  return out;
+}
+function buildMarkdown(){
+  const successItems = items.filter(i=>i.status==='success');
+  if(!successItems.length) return '';
+  let out = '| 文件 | 发票号 | 开票日期 | 销售方 | 项目 | 不含税 | 税额 | 价税合计 |\n|---|---|---|---|---|---|---|---|\n';
+  successItems.forEach(it=>{
+    const f = it.fields;
+    out += '| '+it.label+' | '+(f.invoice_number||'')+' | '+(f.issue_date||'')+' | '+(f.seller_name||'')+' | '+(f.item_name||'')+' | '+(f.amount_excl_tax??'')+' | '+(f.tax_amount??'')+' | '+(f.amount_incl_tax??'')+' |\n';
+  });
+  const sum = (key)=> successItems.reduce((acc,it)=> acc + (Number(it.fields[key])||0), 0);
+  out += '\n**合计**：不含税 ¥'+sum('amount_excl_tax').toFixed(2)+' ｜ 税额 ¥'+sum('tax_amount').toFixed(2)+' ｜ 价税合计 ¥'+sum('amount_incl_tax').toFixed(2)+'\n';
+  return out;
+}
+function copyToClipboard(text){
+  if(!text){ showToast('还没有已完成提取的条目可复制'); return; }
+  navigator.clipboard.writeText(text).then(()=>showToast('已复制到剪贴板')).catch(()=>showToast('复制失败，请手动选择文本复制'));
+}
+
+// ======= 事件绑定 =======
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', ()=>fileInput.click());
+fileInput.addEventListener('change', e=>{
+  Array.from(e.target.files).forEach(f=>{ if(f.type==='application/pdf' || f.name.toLowerCase().endsWith('.pdf')) addPdfFile(f); });
+  fileInput.value = '';
+});
+['dragover','dragenter'].forEach(evt=> dropzone.addEventListener(evt, e=>{ e.preventDefault(); dropzone.classList.add('drag-over'); }));
+['dragleave','drop'].forEach(evt=> dropzone.addEventListener(evt, e=>{ e.preventDefault(); dropzone.classList.remove('drag-over'); }));
+dropzone.addEventListener('drop', e=>{
+  Array.from(e.dataTransfer.files || []).forEach(f=>{ if(f.type==='application/pdf' || f.name.toLowerCase().endsWith('.pdf')) addPdfFile(f); });
+});
+document.addEventListener('paste', e=>{
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if(tag==='INPUT' || tag==='TEXTAREA') return;
+  const dt = e.clipboardData;
+  if(!dt) return;
+  const files = Array.from(dt.files || []);
+  const pdfFiles = files.filter(f=> f.type==='application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+  if(pdfFiles.length){ e.preventDefault(); pdfFiles.forEach(addPdfFile); return; }
+  const text = dt.getData('text/plain');
+  if(text && text.trim().length > 5){ e.preventDefault(); addTextItem(text.trim()); }
+});
+document.getElementById('processAllBtn').addEventListener('click', processAll);
+document.getElementById('clearAllBtn').addEventListener('click', ()=>{
+  if(!items.length) return;
+  if(!confirm('确认清空当前批次列表？此操作不可恢复')) return;
+  items = []; activeId = null;
+  saveDraft(); renderList(); renderResult(); renderSummary();
+});
+document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+document.getElementById('exportTxtBtn').addEventListener('click', ()=>copyToClipboard(buildPlainText()));
+document.getElementById('exportMdBtn').addEventListener('click', ()=>copyToClipboard(buildMarkdown()));
+
+// ======= Init =======
+window.addEventListener('DOMContentLoaded', ()=>{
+  initTheme();
+  loadSettings();
+  bindSettingsSave();
+  renderList();
+  renderResult();
+  renderSummary();
+});
+
+</script>
+</body>
+</html>
